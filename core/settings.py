@@ -38,6 +38,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "app",
+    "aggregatevsannotate",
+    "prefetch_realted_and_select_realated",
 ]
 
 MIDDLEWARE = [

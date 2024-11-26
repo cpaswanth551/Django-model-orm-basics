@@ -1,0 +1,2 @@
+aggregate - performs aggregation over the entire queryset and returns a dictionary with the aggregated values. It's used when you want to compute a summary value for the entire dataset.
+annotate -  adds a new field to each record in the queryset based on an aggregate function.
