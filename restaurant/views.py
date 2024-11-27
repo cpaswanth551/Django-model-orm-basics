@@ -1,8 +1,9 @@
+from datetime import timezone, datetime, timedelta
 from django.shortcuts import render
+from django.db.models.functions import Lower, Length, Concat
+from django.db.models import Count, Avg, Max, Min, Sum, CharField, Value
 
-from restaurant.models import Rating, Restaurant, Staff, StaffRestaurant
-
-# Create your views here.
+from .models import Restaurant, Rating, Sale, Staff, StaffRestaurant
 
 
 def index_prefect_related(request):
@@ -72,5 +73,133 @@ def index_m2m_query(request):
     for job in jobs:
         print(job.restaurant)
         print(job.staff)
+
+    return render(request, "index.html", context)
+
+
+def index_values(request):
+    context = {}
+    restaurant = Restaurant.objects.values("name")  # here the values will a dict output
+    restaurant2 = Restaurant.objects.values(name_lower=Lower("name"))[:5]
+    rst3 = Restaurant.objects.values("name", "date_opened")
+
+    IT = Restaurant.TypeChoices.ITALIAN
+    rating = Rating.objects.filter(restaurant__restaurant_type=IT).values(
+        "rating", "restaurant__name"
+    )  # here we can access the related restaurant element of rating  model using values.
+    print(rating)
+    return render(request, "index.html", context)
+
+
+def index_values_list(request):
+    context = {}
+    restaurant = Restaurant.objects.values_list(
+        "name"
+    )  # her the values are given in tuples.
+
+    restaurant = Restaurant.objects.values_list(
+        "name", flat=True
+    )  # here the values are given in list
+
+    print(restaurant)
+    return render(request, "index.html", context)
+
+
+def index_aggregate(request):
+    context = {}
+    ret_count = Restaurant.objects.count()
+    print(ret_count)
+
+    rest = Restaurant.objects.aggregate(total=Count("id"))
+    print(rest)
+
+    rest_avg = Rating.objects.aggregate(avg=Avg("rating"))
+    print(rest_avg)
+
+    rest_avg1 = Rating.objects.filter(restaurant__name__startswith="p").aggregate(
+        avg=Avg("rating")
+    )
+    print(rest_avg1)
+
+    sale_icome_max = Sale.objects.aggregate(max=Max("income"))
+    sale_icome_min = Sale.objects.aggregate(min=Min("income"))
+    sale_icome = Sale.objects.aggregate(
+        min=Min("income"), max=Max("icome"), avg=Avg("income"), sum=Sum("income")
+    )
+    print(sale_icome_max, sale_icome_min)
+
+    one_month_ago = datetime.now() - timedelta(days=31)
+    sales = Sale.objects.filter(datetime__gte=one_month_ago)
+    sale_icome = sales.aggregate(
+        min=Min("income"), max=Max("income"), avg=Avg("income"), sum=Sum("income")
+    )
+    print(sale_icome)
+
+    return render(request, "index.html", context)
+
+
+def index_annotate(request):
+    context = {}
+    restaurant = Restaurant.objects.annotate(name_len=Length("name"))
+    restaurant1 = Restaurant.objects.annotate(name_len=Length("name")).filter(
+        name_len__gte=10
+    )
+    print(restaurant1.values("name", "name_len"))
+
+    return render(request, "index.html", context)
+
+
+def index_annotate_ex(request):
+    context = {}
+    concatenation = Concat(
+        "name",
+        Value(" [Rating: "),
+        Avg("ratings__rating"),
+        Value("]"),
+        output_field=CharField(),
+    )
+    rest = Restaurant.objects.annotate(
+        message=concatenation
+    )  #  addes {"message" : "Pizzeria 2 [Rating: 3.0]"}
+    for r in rest:
+        print(r.message)
+
+    rest_total_sales = Restaurant.objects.annotate(
+        total_sales=Sum("sales__income")
+    ).values("name", "total_sales")
+
+    rest_count = Restaurant.objects.annotate(
+        num_rating=Count("ratings__rating")
+    ).values("name", "num_rating")
+
+    rest_count_with_avg = Restaurant.objects.annotate(
+        num_rating=Count("ratings__rating"), avg_rating=Avg("ratings__rating")
+    ).values("name", "num_rating", "avg_rating")
+
+    rest_count_with_groupby_rest_type = Restaurant.objects.values(
+        "restaurant_type"
+    ).annotate(
+        num_rating=Count("ratings__rating")
+    )  # This will give distinct restaurant_type rating count
+
+    print([r["total_sales"] for r in rest_count])
+    rest_sales_total = Restaurant.objects.annotate(
+        total_sales=Sum("sales__income")
+    ).order_by("total_sales")
+
+    for r in rest_sales_total:
+        print(r.total_sales)
+
+    rest_sales_total = Restaurant.objects.annotate(
+        total_sales=Sum("sales__income")
+    ).order_by("total_sales")
+
+    print(rest_sales_total.aggregate(avg_sales=Avg("total_sales")))
+
+    return render(request, "index.html", context)
+
+
+def index(request):
+    context = {}
 
     return render(request, "index.html", context)
