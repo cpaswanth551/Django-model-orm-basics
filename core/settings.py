@@ -37,9 +37,11 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django_extensions",
     "app",
     "aggregatevsannotate",
     "prefetch_realted_and_select_realated",
+    "restaurant",
 ]
 
 MIDDLEWARE = [
